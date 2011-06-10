@@ -19,7 +19,7 @@ try:
 except AttributeError:
     from mock import patch_object # < 0.7.0
 
-import robustisoty as conns
+import tillicum as conns
 
 
 class ThresholdSuppressTest(unittest.TestCase):
