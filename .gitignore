@@ -5,3 +5,5 @@
 /*.egg
 /*.egg-info
 /dist
+/.coverage
+/htmlcov
