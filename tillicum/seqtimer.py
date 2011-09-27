@@ -63,6 +63,7 @@ def seqtimer(seq, name=None, interval=None, items=None, length=None,
             dump(last_dump_item, last_dump_time)
             last_dump_time = time.time()
             last_dump_item = timing.count
+
         if not warned and timing.count > seq_len:
             warnings.warn(
                 "Sequence %sis longer than its declared length" % (
