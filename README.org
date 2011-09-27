@@ -1,0 +1,175 @@
+* Make your code robust with Tillicum
+
+  Tillicum is a collection of utilities for instrumenting functions
+  which talk to network services. It makes use of [[http://github.com/wadey/python-ostrich][python-ostrich]] for
+  metrics.
+
+** backoff
+
+   Backoff adds an increasing delay depending on the error rate of the
+   wrapped function. This is useful when your remote service has
+   periods of high latency, as it applies back pressure to your
+   client(s) to let the service recover.
+
+   Backoff can be used as a decorator or a context manager.
+
+#+BEGIN_SRC python
+  from tillicum.backoff import backoff
+
+  @backoff(exceptions=(socket.timeout, socket.error))
+  def talk():
+      remote = urllib2.urlopen('http://some.service:2351')
+      return remote.read()  # -> Will delay more based on error rate
+
+  def talk():
+      with backoff(exceptions=(socket.timeout, socket.error)):
+          remote = urllib2.urlopen('http://some.service:2351')
+          return remote.read()  # -> Will delay more based on error rate
+
+#+END_SRC
+
+
+** ratelimit
+
+   Ratelimit will delay consumption of a sequence to something you
+   specify.
+
+#+BEGIN_SRC python
+  from tillicum.ratelimit import ratelimit
+
+  # Limited to 10/s, this function will take 10s to run
+  def limit_seq():
+      for x in ratelimit(xrange(100), 10):
+          print x
+
+#+END_SRC
+
+** retry
+
+   The retry decorator will restart a function if it raises one of a
+   predefiend list of exceptions. This is good for talking to flaky
+   services, where you would like to retry if it times out.
+
+#+BEGIN_SRC python
+  import urllib2
+  import socket
+
+  from tillicum.retry import retry
+
+
+  @retry(exceptions=(socket.timeout, socket.error))
+  def talk():
+      remote = urllib2.urlopen('http://some.service:2351')
+      return remote.read()  # -> Will retry up to 3 times
+
+#+END_SRC
+
+
+** seqtimer
+
+   The seqtimer function is used to monitor and report the time taken
+   during consumption of a sequence. If the length of the sequence can
+   be determined (or you explicitly provide it), seqtimer will provide
+   an estimated time to completion.
+
+#+BEGIN_SRC python
+  from tillicum.seqtimer import seqtimer
+
+
+  def read_sequence(input):
+      # Print summary every 100 items consumed.
+      for element in seqtimer(input, items=100):
+          do_something_with(element)
+
+# Sample output:
+# [1.00% 100/10000] 100 items in 0.11s @902.05/s; Avg @902.05/s, ETA 0:00:10
+# [2.00% 200/10000] 100 items in 0.11s @910.81/s; Avg @906.18/s, ETA 0:00:10
+# [3.00% 300/10000] 100 items in 0.11s @906.16/s; Avg @906.05/s, ETA 0:00:10
+# [4.00% 400/10000] 100 items in 0.11s @897.70/s; Avg @903.86/s, ETA 0:00:10
+#+END_SRC
+
+
+** suppress
+
+   Suppress creates a context manager which will ignore specific
+   exceptions unless they exceed a specified error rate. It can be
+   composed with the retry decorator, or used on its own for
+   non-critical failure-prone operations.
+
+#+BEGIN_SRC python
+  import socket
+
+  from tillicum.suppress import make_suppress
+  from tillicum.retry import retry
+
+  manager = make_suppress((socket.error, socket.timeout), interval=60, threshold=10)
+
+  def talk():
+      @retry(3)
+      def _internal():
+          remote = urllib2.urlopen('http://some.service:2351')
+          return remote.read()
+
+      with manager():
+          return _internal()
+#+END_SRC
+
+** throttle
+
+   Throttle is used to slow down calls to functions by delaying by a
+   factor of the time the function call took. It’s useful when you
+   need to talk to a fragile service without overwhelming it with
+   requests.
+
+   Throttle can be used as a decorator or context manager. It measures
+   the time taken to execute the wrapped code, then delays by that
+   time multipled by a factor before returning. Additionally, it can
+   delay only if there was an error raised instead of delaying for
+   every call.
+
+#+BEGIN_SRC python
+  import time
+  import urllib2
+
+  from tillicum.throttle import throttle
+
+
+  @throttle(3)
+  def a_method():
+      time.sleep(1)  # -> will delay 3s before returning
+
+  def talk():
+      with throttle(3):
+          remote = urllib2.urlopen('http://some.service:2351')
+          return remote.read()  # -> will delay 3s before returning
+#+END_SRC
+
+** timer
+
+   Timer is a generic tool for determining how long it took to execute
+   a function or section of code. It’s used by some of the other tools
+   in Tillicum, but is also useful on its own.
+
+#+BEGIN_SRC python
+  import time
+
+  from tillicum.timer import timer
+
+  def time_section():
+      with timer() as timings:
+          time.sleep(1)
+
+      return timings  # -> (start_time, stop_time, duration)
+
+
+  @timer()  # Returns (return_value, timing_info)
+  def timed_method():
+      time.sleep(1)
+      return "Test 123"  # -> Returns (1, "Test 123")
+
+  print time_section()
+  # [1317166112.0971849, 1317166113.0973971, 1.0002121925354004]
+
+  print timed_method()
+  # ('Test 123', [1317166113.097517, 1317166114.0976491, 1.0001320838928223])
+#+END_SRC
