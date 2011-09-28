@@ -1,8 +1,8 @@
 * Make your code robust with Tillicum
 
-  Tillicum is a collection of utilities for instrumenting functions
-  which talk to network services. It makes use of [[http://github.com/wadey/python-ostrich][python-ostrich]] for
-  metrics.
+  Tillicum is a collection of utilities for instrumenting, debugging,
+  and augmenting functions which implement and/or talk to network
+  services. It makes use of [[http://github.com/wadey/python-ostrich][python-ostrich]] for metrics.
 
 ** backoff
 
