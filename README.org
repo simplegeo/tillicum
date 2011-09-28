@@ -28,6 +28,46 @@
 
 #+END_SRC
 
+** debug
+
+   Tillicum has tools for entering an interactive debugger session
+   either when an unhandled exception is raised, or when a signal is
+   sent to the process. These use stdin / stdout, so it’s best to run
+   your code in the foreground when using them.
+
+   When using the signal-based debuggers, the any extant signal
+   handlers will be saved and restored as the =debug_on_signal= code
+   is entered and exited.
+
+   As with most of the other parts of Tillicum, they can be used as
+   decorators or context managers.
+
+#+BEGIN_SRC python
+  import signal
+  import time
+
+  from tillicum.debug import debug_on_exception, debug_on_signal
+
+  def signal_debugger_manager():
+      with debug_on_signal(signal.SIGALRM):
+          signal.alarm(1)
+          time.sleep(600)
+
+  @debug_on_signal(signal.SIGALRM)
+  def signal_debugger_decorator():
+      signal.alarm(1)
+      time.sleep(600)
+
+  def exc_debugger_manager():
+      with debug_on_exception(KeyError):
+          return {}['foo']
+
+  @debug_on_exception(KeyError)
+  def exc_debugger_decorator():
+      return {}['foo']
+
+#+END_SRC
+
 
 ** ratelimit
 
