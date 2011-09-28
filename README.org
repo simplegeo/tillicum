@@ -8,8 +8,8 @@
 
 *** ratelimit
 
-   Ratelimit will delay consumption of a sequence to a specified
-   number of items per second.
+   Ratelimit will delay consumption of a sequence so it cannot exceed
+   a given number of items per second.
 
 #+BEGIN_SRC python
   from tillicum.ratelimit import ratelimit
@@ -217,4 +217,27 @@
 
   print timed_method()
   # ('Test 123', [1317166113.097517, 1317166114.0976491, 1.0001320838928223])
+#+END_SRC
+
+
+** They go better together
+
+   All the tools in Tillicum are designed to do one thing and are
+   compose well. For example, to delay when errors begin to occur and
+   retry, just compose those two functions:
+
+#+BEGIN_SRC python
+  @retry()
+  @backoff()
+  def talk():
+      do_something()
+
+#+END_SRC
+
+   To make sure that ratelimit is doing what you expect, you can time
+   a rate-limited sequence:
+
+#+BEGIN_SRC python
+  for x in seqtimer(ratelimit(iter(100), 1)):
+      pass
 #+END_SRC
